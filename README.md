@@ -45,14 +45,16 @@ Browser (playback + transcript)
 
 ## Requirements
 
-- Python 3.12+
-- macOS (Apple Silicon) or Linux with supported GPU
-- Native Windows is not yet supported by `litert-lm`; use the repo from macOS, Linux, or a Linux environment that can install the runtime
+- Ubuntu 24.04 LTS recommended
+- Python 3.12
+- A supported Linux GPU environment for `litert-lm`
 - ~3 GB RAM available for model runtime
+
+This `beta` branch is now documented for Ubuntu only. Native Windows is not supported by `litert-lm`, so the supported path is to run the repo from Ubuntu.
 
 ---
 
-## Quick start
+## Quick start (Ubuntu)
 
 ```bash
 git clone https://github.com/fikrikarim/parlor.git
@@ -61,16 +63,15 @@ cd parlor
 # Install uv if needed
 curl -LsSf https://astral.sh/uv/install.sh | sh
 
-cd src
-uv sync
-uv run server.py
+# Start the app
+./scripts/start_ubuntu.sh
 ```
 
 Then open [http://localhost:8000](http://localhost:8000), allow mic/camera, and start talking.
 
-If you already have a local model file in `models/`, the server now prefers that file before attempting any Hugging Face download. It also loads a repo-root `.env` file if present.
+If you already have a local model file in `models/`, the server prefers that file before attempting any Hugging Face download. It also loads a repo-root `.env` file if present.
 
-On Windows, you can use `scripts/start_windows.bat` to validate the setup and auto-detect `models/Gemma-4-E2B-it-abliterated.litertlm`, but native Windows still cannot complete `uv sync` until LiteRT-LM publishes Windows wheels. See `docs/windows-beta-setup.md`.
+For a fuller Ubuntu setup guide, troubleshooting notes, and manual commands, see `docs/ubuntu-setup.md`.
 
 ---
 
@@ -100,8 +101,8 @@ Models auto-download on first run only if `MODEL_PATH` is unset and the repo `mo
 ## Extra project docs
 
 - `docs/brainstorm-and-launch-plan.md` keeps roadmap and launch planning notes out of the main README.
-- `docs/windows-beta-setup.md` documents the current Windows limitation, `.env` support, and local-model setup path for beta.
-- `scripts/start_windows.bat` gives you a Windows preflight command and auto-detects a local model file when present.
+- `docs/ubuntu-setup.md` is the Ubuntu-first setup and launch guide for this branch.
+- `scripts/start_ubuntu.sh` is the supported launcher for this branch.
 
 ---
 

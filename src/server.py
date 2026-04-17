@@ -71,12 +71,12 @@ def runtime_support_error() -> str:
     if sys.platform == "win32":
         return (
             "LiteRT-LM does not currently publish native Windows wheels, so this app "
-            "cannot run on win_amd64 yet. Use the same repo on macOS, Linux, or a "
-            "Linux environment that can install litert-lm."
+            "cannot run on win_amd64 yet. Use the Ubuntu setup for this beta branch "
+            "and install the runtime there."
         )
     return (
-        "litert-lm is not installed. Run `uv sync` on a supported platform before "
-        "starting the server."
+        "litert-lm is not installed. Run `uv sync` from Ubuntu before starting the "
+        "server."
     )
 
 

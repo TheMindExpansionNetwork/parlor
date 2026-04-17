@@ -11,7 +11,7 @@ This file is the dedicated home for brainstorming, roadmap, and launch execution
 ## Launch-tomorrow checklist
 
 - [ ] Confirm clean install path on macOS/Linux with `uv sync`.
-- [ ] Confirm clean install path on Windows with `scripts/start_windows.bat`.
+- [ ] Confirm Windows preflight path with `scripts/start_windows.bat` and document the native LiteRT-LM packaging limitation.
 - [ ] Record a short demo clip.
 - [ ] Verify README quick-start accuracy.
 - [ ] Create release notes for known limitations.

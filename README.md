@@ -47,6 +47,7 @@ Browser (playback + transcript)
 
 - Python 3.12+
 - macOS (Apple Silicon) or Linux with supported GPU
+- Native Windows is not yet supported by `litert-lm`; use the repo from macOS, Linux, or a Linux environment that can install the runtime
 - ~3 GB RAM available for model runtime
 
 ---
@@ -67,7 +68,9 @@ uv run server.py
 
 Then open [http://localhost:8000](http://localhost:8000), allow mic/camera, and start talking.
 
-On Windows, you can use `scripts/start_windows.bat` to run `uv sync` and start the server from the repo root.
+If you already have a local model file in `models/`, the server now prefers that file before attempting any Hugging Face download. It also loads a repo-root `.env` file if present.
+
+On Windows, you can use `scripts/start_windows.bat` to validate the setup and auto-detect `models/Gemma-4-E2B-it-abliterated.litertlm`, but native Windows still cannot complete `uv sync` until LiteRT-LM publishes Windows wheels. See `docs/windows-beta-setup.md`.
 
 ---
 
@@ -92,12 +95,13 @@ By default the test fails if p95 latency exceeds configured thresholds. Tune lim
 - **Quick style chips**: `Simple`, `Challenge`, `Emoji`
 - **Fast mode optimization**: smaller camera frames + lower JPEG quality for lower latency
 
-Models auto-download on first run (~2.6 GB for Gemma 4 E2B + TTS files).
+Models auto-download on first run only if `MODEL_PATH` is unset and the repo `models/` folder does not already contain a `.litertlm` bundle.
 
 ## Extra project docs
 
 - `docs/brainstorm-and-launch-plan.md` keeps roadmap and launch planning notes out of the main README.
-- `scripts/start_windows.bat` gives you a simple Windows bootstrap command for local testing.
+- `docs/windows-beta-setup.md` documents the current Windows limitation, `.env` support, and local-model setup path for beta.
+- `scripts/start_windows.bat` gives you a Windows preflight command and auto-detects a local model file when present.
 
 ---
 
@@ -356,7 +360,7 @@ This sequence improves retention and demo quality immediately, while keeping the
 
 | Variable     | Default                        | Description                                    |
 | ------------ | ------------------------------ | ---------------------------------------------- |
-| `MODEL_PATH` | auto-download from HuggingFace | Path to a local `gemma-4-E2B-it.litertlm` file |
+| `MODEL_PATH` | auto-detect from `./models`, else download from HuggingFace | Path to a local `.litertlm` file |
 | `PORT`       | `8000`                         | Server port                                    |
 
 ---

@@ -509,6 +509,7 @@
 
   <div class="controls">
     <button id="cameraToggle" class="ctrl-btn active">Camera On</button>
+    <button id="visionBoost" class="ctrl-btn">Use Camera Next</button>
     <div class="state-indicator">
       <div id="stateDot" class="dot loading"></div>
       <span id="stateText">Loading...</span>
@@ -524,7 +525,7 @@
 <script src="https://cdn.jsdelivr.net/npm/@ricky0123/vad-web@0.0.29/dist/bundle.min.js"></script>
 <script>
 const $ = id => document.getElementById(id);
-const video = $('video'), cameraToggle = $('cameraToggle');
+const video = $('video'), cameraToggle = $('cameraToggle'), visionBoost = $('visionBoost');
 const messagesDiv = $('messages'), statusEl = $('status');
 const stateDot = $('stateDot'), stateText = $('stateText');
 const viewportWrap = $('viewportWrap');
@@ -545,6 +546,27 @@ let streamNextTime = 0;         // When to schedule next chunk
 let streamSources = [];         // Active AudioBufferSourceNodes
 let streamTtsTime = null;
 let stylePrompt = '';
+let turnCount = 0;
+let forceImageNextTurn = false;
+
+const IMAGE_CADENCE_BY_PRESET = {
+  balanced: 3,
+  coach: 2,
+  fun: 2,
+  fast: 6,
+};
+
+function shouldSendImageThisTurn() {
+  if (!cameraEnabled) return false;
+  if (forceImageNextTurn) {
+    forceImageNextTurn = false;
+    visionBoost.classList.remove('active');
+    visionBoost.textContent = 'Use Camera Next';
+    return true;
+  }
+  const cadence = IMAGE_CADENCE_BY_PRESET[presetSelect.value] ?? IMAGE_CADENCE_BY_PRESET.balanced;
+  return cadence > 0 && (turnCount % cadence === 0);
+}
 
 // ── Waveform Visualizer ──
 let analyser, micSource;
@@ -784,11 +806,16 @@ function handleSpeechEnd(audio) {
   if (!ws || ws.readyState !== WebSocket.OPEN) return;
 
   const wavBase64 = float32ToWavBase64(audio);
-  const imageBase64 = captureFrame();
+  turnCount += 1;
+  const imageBase64 = shouldSendImageThisTurn() ? captureFrame() : null;
 
   setState('processing');
   setStatus('processing', 'Processing');
-  addMessage('user', '<span class="loading-dots"><span></span><span></span><span></span></span>', imageBase64 ? 'with camera' : '');
+  addMessage(
+    'user',
+    '<span class="loading-dots"><span></span><span></span><span></span></span>',
+    imageBase64 ? 'with camera (auto)' : 'audio only'
+  );
 
   const payload = { audio: wavBase64 };
   if (imageBase64) payload.image = imageBase64;
@@ -898,6 +925,18 @@ cameraToggle.addEventListener('click', () => {
   cameraToggle.classList.toggle('active', cameraEnabled);
   cameraToggle.textContent = cameraEnabled ? 'Camera On' : 'Camera Off';
   video.style.opacity = cameraEnabled ? 1 : 0.3;
+  if (!cameraEnabled) {
+    forceImageNextTurn = false;
+    visionBoost.classList.remove('active');
+    visionBoost.textContent = 'Use Camera Next';
+  }
+});
+
+visionBoost.addEventListener('click', () => {
+  if (!cameraEnabled) return;
+  forceImageNextTurn = !forceImageNextTurn;
+  visionBoost.classList.toggle('active', forceImageNextTurn);
+  visionBoost.textContent = forceImageNextTurn ? 'Camera Locked Next' : 'Use Camera Next';
 });
 
 styleChipButtons.forEach((btn) => {

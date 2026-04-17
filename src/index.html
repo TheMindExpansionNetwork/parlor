@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Parlor</title>
+<title>MindBotz</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Instrument+Sans:wght@400;500;600&family=Syne:wght@700;800&display=swap" rel="stylesheet">
@@ -362,6 +362,58 @@
     z-index: 2;
   }
 
+  .preset-bar {
+    width: 100%;
+    max-width: 640px;
+    padding: 8px 4px 0;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
+    z-index: 2;
+  }
+
+  .preset-label {
+    font-size: 11px;
+    color: var(--c-text-dim);
+    letter-spacing: 0.03em;
+    text-transform: uppercase;
+  }
+
+  .preset-select {
+    font-family: var(--font-body);
+    font-size: 12px;
+    font-weight: 600;
+    padding: 8px 12px;
+    border: 1px solid rgba(255,255,255,0.06);
+    border-radius: 10px;
+    background: var(--c-surface);
+    color: var(--c-text);
+    outline: none;
+  }
+
+  .chips {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+
+  .chip-btn {
+    font-family: var(--font-body);
+    font-size: 11px;
+    font-weight: 600;
+    padding: 6px 10px;
+    border: 1px solid rgba(255,255,255,0.06);
+    border-radius: 999px;
+    background: var(--c-surface);
+    color: var(--c-text-dim);
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+
+  .chip-btn:hover { background: var(--c-surface-hover); color: var(--c-text); }
+  .chip-btn.active { color: var(--c-listen); border-color: rgba(74,222,128,0.2); }
+
   .ctrl-btn {
     font-family: var(--font-body);
     font-size: 12px;
@@ -418,7 +470,7 @@
 <header>
   <div class="logo">
     <div class="logo-mark"></div>
-    <h1>Parlor</h1>
+    <h1>MindBotz</h1>
   </div>
   <span class="model-label">Gemma 4 E2B</span>
   <div id="status" class="status-pill disconnected">Disconnected</div>
@@ -440,6 +492,21 @@
   <div id="messages" class="transcript"></div>
 
   <!-- Controls -->
+  <div class="preset-bar">
+    <span class="preset-label">Preset</span>
+    <select id="presetSelect" class="preset-select">
+      <option value="balanced">Balanced</option>
+      <option value="coach">Coach</option>
+      <option value="fun">Fun</option>
+      <option value="fast">Fast</option>
+    </select>
+    <div class="chips">
+      <button data-style="Use simple words and short examples." class="chip-btn">Simple</button>
+      <button data-style="Add one quick challenge question after your answer." class="chip-btn">Challenge</button>
+      <button data-style="Use emoji very lightly when it helps clarity." class="chip-btn">Emoji</button>
+    </div>
+  </div>
+
   <div class="controls">
     <button id="cameraToggle" class="ctrl-btn active">Camera On</button>
     <div class="state-indicator">
@@ -463,6 +530,8 @@ const stateDot = $('stateDot'), stateText = $('stateText');
 const viewportWrap = $('viewportWrap');
 const waveformCanvas = $('waveform');
 const waveformCtx = waveformCanvas.getContext('2d');
+const presetSelect = $('presetSelect');
+const styleChipButtons = Array.from(document.querySelectorAll('.chip-btn'));
 
 let ws, mediaStream, myvad;
 let cameraEnabled = true;
@@ -475,6 +544,7 @@ let streamSampleRate = 24000;
 let streamNextTime = 0;         // When to schedule next chunk
 let streamSources = [];         // Active AudioBufferSourceNodes
 let streamTtsTime = null;
+let stylePrompt = '';
 
 // ── Waveform Visualizer ──
 let analyser, micSource;
@@ -679,10 +749,13 @@ async function startCamera() {
 function captureFrame() {
   if (!cameraEnabled || !video.videoWidth) return null;
   const canvas = document.createElement('canvas');
-  const scale = 320 / video.videoWidth;
-  canvas.width = 320; canvas.height = video.videoHeight * scale;
+  const useFast = presetSelect.value === 'fast';
+  const targetWidth = useFast ? 224 : 320;
+  const quality = useFast ? 0.55 : 0.7;
+  const scale = targetWidth / video.videoWidth;
+  canvas.width = targetWidth; canvas.height = video.videoHeight * scale;
   canvas.getContext('2d').drawImage(video, 0, 0, canvas.width, canvas.height);
-  return canvas.toDataURL('image/jpeg', 0.7).split(',')[1];
+  return canvas.toDataURL('image/jpeg', quality).split(',')[1];
 }
 
 // ── VAD Handlers ──
@@ -719,6 +792,8 @@ function handleSpeechEnd(audio) {
 
   const payload = { audio: wavBase64 };
   if (imageBase64) payload.image = imageBase64;
+  payload.preset = presetSelect.value;
+  if (stylePrompt) payload.style_prompt = stylePrompt;
   ws.send(JSON.stringify(payload));
 }
 
@@ -823,6 +898,19 @@ cameraToggle.addEventListener('click', () => {
   cameraToggle.classList.toggle('active', cameraEnabled);
   cameraToggle.textContent = cameraEnabled ? 'Camera On' : 'Camera Off';
   video.style.opacity = cameraEnabled ? 1 : 0.3;
+});
+
+styleChipButtons.forEach((btn) => {
+  btn.addEventListener('click', () => {
+    const isActive = btn.classList.contains('active');
+    styleChipButtons.forEach((b) => b.classList.remove('active'));
+    if (isActive) {
+      stylePrompt = '';
+      return;
+    }
+    btn.classList.add('active');
+    stylePrompt = btn.dataset.style || '';
+  });
 });
 
 // ── Init ──

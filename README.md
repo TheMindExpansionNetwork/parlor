@@ -1,8 +1,8 @@
-# Parlor
+# MindBotz
 
 On-device, real-time multimodal AI. Have natural voice and vision conversations with an AI that runs entirely on your machine.
 
-Parlor uses [Gemma 4 E2B](https://huggingface.co/google/gemma-4-E2B-it) for understanding speech and vision, and [Kokoro](https://huggingface.co/hexgrad/Kokoro-82M) for text-to-speech. You talk, show your camera, and it talks back, all locally.
+MindBotz uses [Gemma 4 E2B](https://huggingface.co/google/gemma-4-E2B-it) for understanding speech and vision, and [Kokoro](https://huggingface.co/hexgrad/Kokoro-82M) for text-to-speech. You talk, show your camera, and it talks back, all locally.
 
 https://github.com/user-attachments/assets/cb0ffb2e-f84f-48e7-872c-c5f7b5c6d51f
 
@@ -57,6 +57,13 @@ uv run server.py
 ```
 
 Open [http://localhost:8000](http://localhost:8000), grant camera and microphone access, and start talking.
+
+## New in this fork
+
+- **Rebranded UI** as MindBotz.
+- **Conversation presets** (`Balanced`, `Coach`, `Fun`, `Fast`) to shape response style.
+- **Quick style chips** (Simple, Challenge, Emoji) for one-tap personality tweaks.
+- **Fast mode optimization**: lower camera frame resolution and JPEG quality for quicker turn payloads.
 
 Models are downloaded automatically on first run (~2.6 GB for Gemma 4 E2B, plus TTS models).
 

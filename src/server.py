@@ -1,4 +1,4 @@
-"""Parlor — on-device, real-time multimodal AI (voice + vision)."""
+"""MindBotz — on-device, real-time multimodal AI (voice + vision)."""
 
 import asyncio
 import base64
@@ -131,6 +131,8 @@ async def websocket_endpoint(ws: WebSocket):
             interrupted.clear()
 
             content = []
+            preset = (msg.get("preset") or "balanced").lower()
+            style_prompt = (msg.get("style_prompt") or "").strip()
             if msg.get("audio"):
                 content.append({"type": "audio", "blob": msg["audio"]})
             if msg.get("image"):
@@ -144,6 +146,22 @@ async def websocket_endpoint(ws: WebSocket):
                 content.append({"type": "text", "text": "The user is showing you their camera. Describe what you see."})
             else:
                 content.append({"type": "text", "text": msg.get("text", "Hello!")})
+
+            preset_instructions = {
+                "balanced": "Keep responses concise, clear, and natural.",
+                "coach": "Act like a supportive speaking coach. Be encouraging and gently correct mistakes when useful.",
+                "fun": "Add light, playful energy. Keep it helpful first, then fun.",
+                "fast": "Prioritize speed. Answer briefly in 1-2 short sentences unless detail is requested.",
+            }
+            content.append({
+                "type": "text",
+                "text": f"Assistant preset: {preset}. {preset_instructions.get(preset, preset_instructions['balanced'])}",
+            })
+            if style_prompt:
+                content.append({
+                    "type": "text",
+                    "text": f"Additional user preference: {style_prompt}",
+                })
 
             # LLM inference
             t0 = time.time()

@@ -187,6 +187,114 @@ Before release:
 
 ---
 
+## Fork + Branch Organization (Game Plan)
+
+If you want to move fast without breaking your production momentum, run a **two-fork setup**:
+
+1. **`upstream/parlor`**
+   - Tracks the original project.
+   - Pull from here to keep current with upstream improvements.
+2. **`your-org/parlor` (your main fork)**
+   - Where your product roadmap lives.
+   - Protect `main`, merge only via PR.
+3. **`your-org/parlor-labs` (optional experimentation fork)**
+   - For risky ideas (video pipelines, avatar rendering, model swaps).
+   - Cherry-pick successful experiments back into `your-org/parlor`.
+
+### Suggested branch map
+
+- `main` → stable and demo-ready
+- `develop` → integration branch for near-term features
+- `feat/*` → feature work (short-lived)
+- `fix/*` → bug fixes
+- `exp/*` → spikes/prototypes (allowed to be messy)
+- `release/*` → optional release hardening branches
+
+Branch naming examples:
+
+- `feat/realtime-captions`
+- `feat/video-avatar-streaming`
+- `fix/websocket-reconnect`
+- `exp/rtc-vs-websocket-audio`
+
+---
+
+## Future Features Backlog (Voice Agent + Video)
+
+### Priority 1: Voice-agent reliability (build this first)
+
+- Robust reconnect handling (network drops, tab sleep)
+- Better interruption behavior (barge-in while TTS speaks)
+- Streaming partial transcript + “thinking” states in UI
+- Session memory controls (`short`, `balanced`, `deep`)
+- Prompt safety rails and moderation hooks
+
+### Priority 2: Better UX for daily usage
+
+- Push-to-talk + hands-free modes
+- Saved personas / presets per use case (coach, tutor, sales, support)
+- Conversation export (txt/json/audio transcript bundle)
+- Latency/performance panel in UI
+- Multi-device profile sync (optional, can be local-first)
+
+### Priority 3: Video-native capabilities
+
+- Live video understanding mode (continuous frame summarization)
+- Screen-share understanding (desktop/web tab)
+- Optional avatar output (talking head / animated reaction)
+- Clip capture + share snippets
+- Multi-camera selection and quality presets
+
+### Priority 4: “Pro” platform features
+
+- Plug-in/tool calling (calendar, CRM, docs, task tools)
+- Team workspaces + role-based settings
+- Usage metering (tokens/seconds/latency) per session
+- Local vs cloud model routing policy engine
+- Billing/invoicing hooks (if you commercialize)
+
+---
+
+## 30-60-90 Day Execution Plan
+
+### Next 30 days (stability + trust)
+
+- Lock down branch protections and PR templates
+- Ship reconnect + barge-in polish
+- Add minimal telemetry (latency, drop rate, failure rate)
+- Produce one polished end-to-end demo workflow
+
+### Day 31-60 (product stickiness)
+
+- Release persona presets + conversation export
+- Add session memory controls
+- Launch a small private beta group with weekly feedback
+
+### Day 61-90 (video differentiation)
+
+- Release first “video understanding mode”
+- Add clip capture and a social/demo-ready output flow
+- Evaluate avatar pipeline feasibility in `exp/*` branches
+
+---
+
+## Tomorrow’s Focus (High ROI)
+
+If you’re investing tomorrow and want maximum signal fast, do this order:
+
+1. **Stability sprint (half day)**
+   Tighten reconnect, interruption, and error states.
+2. **One wow feature (half day)**
+   Ship realtime captions + transcript export.
+3. **Ship loop setup (1-2 hours)**
+   PR template, issue labels, and branch conventions.
+4. **Distribution prep (1-2 hours)**
+   Record a short demo clip showing voice + camera + low latency.
+
+This sequence improves retention and demo quality immediately, while keeping the codebase organized for bigger bets (video agents, avatars, tool calling).
+
+---
+
 ## Configuration
 
 | Variable     | Default                        | Description                                    |

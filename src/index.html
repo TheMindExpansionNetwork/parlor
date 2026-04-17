@@ -327,6 +327,11 @@
     letter-spacing: 0.02em;
   }
 
+  .msg-text {
+    white-space: pre-wrap;
+    word-break: break-word;
+  }
+
   .loading-dots {
     display: inline-flex;
     gap: 4px;
@@ -360,6 +365,127 @@
     justify-content: space-between;
     flex-shrink: 0;
     z-index: 2;
+  }
+
+  .onboarding {
+    width: 100%;
+    max-width: 640px;
+    margin-top: 14px;
+    padding: 14px 16px;
+    border: 1px solid rgba(255,255,255,0.06);
+    border-radius: 16px;
+    background:
+      linear-gradient(180deg, rgba(255,255,255,0.04), rgba(255,255,255,0.02)),
+      radial-gradient(circle at top right, rgba(74,222,128,0.08), transparent 36%);
+    color: var(--c-text);
+    z-index: 2;
+  }
+
+  .onboarding.hidden {
+    display: none;
+  }
+
+  .onboarding h2 {
+    font-family: var(--font-display);
+    font-size: 22px;
+    line-height: 1;
+    color: var(--c-text-bright);
+    margin-bottom: 10px;
+  }
+
+  .onboarding p {
+    font-size: 13px;
+    line-height: 1.55;
+    color: var(--c-text);
+  }
+
+  .onboarding p + p {
+    margin-top: 8px;
+    color: var(--c-text-dim);
+  }
+
+  .composer {
+    width: 100%;
+    max-width: 640px;
+    padding: 12px 4px 0;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 10px;
+    align-items: end;
+    flex-shrink: 0;
+    z-index: 2;
+  }
+
+  .composer-input {
+    min-width: 0;
+    min-height: 46px;
+    max-height: 120px;
+    resize: vertical;
+    font-family: var(--font-body);
+    font-size: 14px;
+    line-height: 1.4;
+    padding: 12px 14px;
+    border-radius: 14px;
+    border: 1px solid rgba(255,255,255,0.06);
+    background: rgba(255,255,255,0.035);
+    color: var(--c-text-bright);
+    outline: none;
+  }
+
+  .composer-input:focus {
+    border-color: rgba(74,222,128,0.2);
+    box-shadow: 0 0 0 3px rgba(74,222,128,0.08);
+  }
+
+  .composer-input::placeholder {
+    color: var(--c-text-dim);
+  }
+
+  .send-btn {
+    min-width: 110px;
+    min-height: 46px;
+    padding: 0 16px;
+    border: 1px solid rgba(74,222,128,0.18);
+    border-radius: 14px;
+    background: rgba(74,222,128,0.12);
+    color: var(--c-listen);
+    font-family: var(--font-body);
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: 0.03em;
+    text-transform: uppercase;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+
+  .send-btn:hover {
+    background: rgba(74,222,128,0.18);
+  }
+
+  .send-btn:disabled {
+    cursor: not-allowed;
+    color: var(--c-text-dim);
+    background: var(--c-surface);
+    border-color: rgba(255,255,255,0.06);
+  }
+
+  .composer-hint {
+    width: 100%;
+    max-width: 640px;
+    padding: 8px 6px 0;
+    font-size: 11.5px;
+    color: var(--c-text-dim);
+    z-index: 2;
+  }
+
+  @media (max-width: 720px) {
+    .composer {
+      grid-template-columns: 1fr;
+    }
+
+    .send-btn {
+      width: 100%;
+    }
   }
 
   .preset-bar {
@@ -491,6 +617,12 @@
   <!-- Transcript -->
   <div id="messages" class="transcript"></div>
 
+  <div id="onboarding" class="onboarding">
+    <h2>Start With Voice Or Text</h2>
+    <p>Talk naturally and the app will listen for a pause, or type a message below and send it manually.</p>
+    <p>Use <strong>Use Camera Next</strong> when you want the next turn to include one camera frame for visual context.</p>
+  </div>
+
   <!-- Controls -->
   <div class="preset-bar">
     <span class="preset-label">Preset</span>
@@ -519,6 +651,12 @@
       On-device
     </span>
   </div>
+
+  <div class="composer">
+    <textarea id="textInput" class="composer-input" rows="2" placeholder="Type here if you want to test without the microphone..."></textarea>
+    <button id="sendText" class="send-btn">Send Text</button>
+  </div>
+  <div class="composer-hint">Press Enter to send. Use Shift+Enter for a new line.</div>
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/onnxruntime-web@1.22.0/dist/ort.min.js"></script>
@@ -532,6 +670,9 @@ const viewportWrap = $('viewportWrap');
 const waveformCanvas = $('waveform');
 const waveformCtx = waveformCanvas.getContext('2d');
 const presetSelect = $('presetSelect');
+const onboarding = $('onboarding');
+const textInput = $('textInput');
+const sendTextButton = $('sendText');
 const styleChipButtons = Array.from(document.querySelectorAll('.chip-btn'));
 
 let ws, mediaStream, myvad;
@@ -548,6 +689,10 @@ let streamTtsTime = null;
 let stylePrompt = '';
 let turnCount = 0;
 let forceImageNextTurn = false;
+
+function setOnboardingVisibility() {
+  onboarding.classList.toggle('hidden', messagesDiv.children.length > 0);
+}
 
 const IMAGE_CADENCE_BY_PRESET = {
   balanced: 3,
@@ -746,6 +891,12 @@ function connect() {
 }
 
 function setStatus(cls, text) { statusEl.className = `status-pill ${cls}`; statusEl.textContent = text; }
+
+function updateComposerState() {
+  const hasText = textInput.value.trim().length > 0;
+  const connected = ws && ws.readyState === WebSocket.OPEN;
+  sendTextButton.disabled = !hasText || !connected || state === 'processing';
+}
 
 // ── Camera ──
 async function startCamera() {

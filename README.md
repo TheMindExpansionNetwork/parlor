@@ -45,13 +45,16 @@ Browser (playback + transcript)
 
 ## Requirements
 
-- Python 3.12+
-- macOS (Apple Silicon) or Linux with supported GPU
+- Ubuntu 24.04 LTS recommended
+- Python 3.12
+- A supported Linux GPU environment for `litert-lm`
 - ~3 GB RAM available for model runtime
+
+This `beta` branch is now documented for Ubuntu only. Native Windows is not supported by `litert-lm`, so the supported path is to run the repo from Ubuntu.
 
 ---
 
-## Quick start
+## Quick start (Ubuntu)
 
 ```bash
 git clone https://github.com/fikrikarim/parlor.git
@@ -60,12 +63,15 @@ cd parlor
 # Install uv if needed
 curl -LsSf https://astral.sh/uv/install.sh | sh
 
-cd src
-uv sync
-uv run server.py
+# Start the app
+./scripts/start_ubuntu.sh
 ```
 
 Then open [http://localhost:8000](http://localhost:8000), allow mic/camera, and start talking.
+
+If you already have a local model file in `models/`, the server prefers that file before attempting any Hugging Face download. It also loads a repo-root `.env` file if present.
+
+For a fuller Ubuntu setup guide, troubleshooting notes, and manual commands, see `docs/ubuntu-setup.md`.
 
 ---
 
@@ -90,7 +96,13 @@ By default the test fails if p95 latency exceeds configured thresholds. Tune lim
 - **Quick style chips**: `Simple`, `Challenge`, `Emoji`
 - **Fast mode optimization**: smaller camera frames + lower JPEG quality for lower latency
 
-Models auto-download on first run (~2.6 GB for Gemma 4 E2B + TTS files).
+Models auto-download on first run only if `MODEL_PATH` is unset and the repo `models/` folder does not already contain a `.litertlm` bundle.
+
+## Extra project docs
+
+- `docs/brainstorm-and-launch-plan.md` keeps roadmap and launch planning notes out of the main README.
+- `docs/ubuntu-setup.md` is the Ubuntu-first setup and launch guide for this branch.
+- `scripts/start_ubuntu.sh` is the supported launcher for this branch.
 
 ---
 
@@ -349,7 +361,7 @@ This sequence improves retention and demo quality immediately, while keeping the
 
 | Variable     | Default                        | Description                                    |
 | ------------ | ------------------------------ | ---------------------------------------------- |
-| `MODEL_PATH` | auto-download from HuggingFace | Path to a local `gemma-4-E2B-it.litertlm` file |
+| `MODEL_PATH` | auto-detect from `./models`, else download from HuggingFace | Path to a local `.litertlm` file |
 | `PORT`       | `8000`                         | Server port                                    |
 
 ---

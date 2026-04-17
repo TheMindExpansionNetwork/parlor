@@ -852,9 +852,11 @@ function connect() {
   ws.onopen = () => {
     setStatus('connected', 'Connected');
     if (state !== 'loading') setState('listening');
+    updateComposerState();
   };
   ws.onclose = () => {
     setStatus('disconnected', 'Disconnected');
+    updateComposerState();
     setTimeout(connect, 2000);
   };
   ws.onmessage = ({ data }) => {
@@ -864,11 +866,11 @@ function connect() {
         const userMsgs = messagesDiv.querySelectorAll('.msg.user');
         const lastUserMsg = userMsgs[userMsgs.length - 1];
         if (lastUserMsg) {
-          const meta = lastUserMsg.querySelector('.meta');
-          lastUserMsg.innerHTML = `${msg.transcription}${meta ? meta.outerHTML : ''}`;
+          setMessageText(lastUserMsg, msg.transcription);
         }
       }
       addMessage('assistant', msg.text, `LLM ${msg.llm_time}s`);
+      updateComposerState();
     } else if (msg.type === 'audio_start') {
       if (ignoreIncomingAudio) return;
       streamSampleRate = msg.sample_rate || 24000;
@@ -881,6 +883,7 @@ function connect() {
         ignoreIncomingAudio = false;
         stopPlayback();
         setState('listening');
+        updateComposerState();
         return;
       }
       streamTtsTime = msg.tts_time;
@@ -973,6 +976,7 @@ function handleSpeechEnd(audio) {
   payload.preset = presetSelect.value;
   if (stylePrompt) payload.style_prompt = stylePrompt;
   ws.send(JSON.stringify(payload));
+  updateComposerState();
 }
 
 // ── Float32 @ 16kHz → WAV base64 ──
@@ -1063,12 +1067,51 @@ function queueAudioChunk(base64Pcm) {
 }
 
 // ── UI ──
+function escapeHtml(text) {
+  return String(text)
+    .replaceAll('&', '&amp;')
+    .replaceAll('<', '&lt;')
+    .replaceAll('>', '&gt;')
+    .replaceAll('"', '&quot;')
+    .replaceAll("'", '&#39;');
+}
+
+function setMessageText(messageEl, text) {
+  const meta = messageEl.querySelector('.meta');
+  messageEl.innerHTML = `${escapeHtml(text)}${meta ? meta.outerHTML : ''}`;
+}
+
 function addMessage(role, text, meta) {
   const div = document.createElement('div');
   div.className = `msg ${role}`;
   div.innerHTML = `${text}${meta ? `<div class="meta">${meta}</div>` : ''}`;
   messagesDiv.appendChild(div);
   messagesDiv.scrollTop = messagesDiv.scrollHeight;
+  setOnboardingVisibility();
+}
+
+function sendTextTurn() {
+  const text = textInput.value.trim();
+  if (!text || !ws || ws.readyState !== WebSocket.OPEN) return;
+
+  if (state === 'speaking') {
+    stopPlayback();
+    ignoreIncomingAudio = true;
+    ws.send(JSON.stringify({ type: 'interrupt' }));
+  }
+
+  turnCount += 1;
+  const imageBase64 = shouldSendImageThisTurn() ? captureFrame() : null;
+  const payload = { text, preset: presetSelect.value };
+  if (imageBase64) payload.image = imageBase64;
+  if (stylePrompt) payload.style_prompt = stylePrompt;
+
+  addMessage('user', escapeHtml(text), imageBase64 ? 'text + camera' : 'text only');
+  textInput.value = '';
+  setState('processing');
+  setStatus('processing', 'Processing');
+  ws.send(JSON.stringify(payload));
+  updateComposerState();
 }
 
 cameraToggle.addEventListener('click', () => {
@@ -1102,6 +1145,15 @@ styleChipButtons.forEach((btn) => {
     stylePrompt = btn.dataset.style || '';
   });
 });
+
+textInput.addEventListener('input', updateComposerState);
+textInput.addEventListener('keydown', (event) => {
+  if (event.key === 'Enter' && !event.shiftKey) {
+    event.preventDefault();
+    sendTextTurn();
+  }
+});
+sendTextButton.addEventListener('click', sendTextTurn);
 
 // ── Init ──
 async function init() {
@@ -1142,6 +1194,8 @@ async function init() {
   ensureAudioCtx();
 
   setState('listening');
+  setOnboardingVisibility();
+  updateComposerState();
 
   // Start waveform loop
   drawWaveform();

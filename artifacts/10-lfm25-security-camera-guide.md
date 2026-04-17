@@ -1,118 +1,128 @@
-# LFM2.5 Camera Security + Roast Mode Research Guide
+# LFM2.5 Camera Security + “Roast Mode” Build Guide (Updated April 17, 2026)
 
-## TL;DR
-- `LiquidAI/LFM2.5-350M` is **text-only**. It cannot directly read camera frames.
-- For camera vision, use a vision-language model such as `LiquidAI/LFM2.5-VL-450M` (or `LFM2.5-VL-1.6B` if you can afford more compute).
-- Best architecture: **camera frame sampler + person detector + VLM captioning + mode state machine + TTS output**.
-- You can add a "roast" personality mode, but implement **safety filters** so it stays playful and avoids harassment/hate content.
+## Quick answer to your link
+You shared `LiquidAI/LFM2.5-350M`.
 
----
+- That exact model is **text-only**.
+- For live camera behavior, use a **vision-language model** from the same family:
+  - `LiquidAI/LFM2.5-VL-450M` (fastest/smallest)
+  - `LiquidAI/LFM2.5-VL-1.6B` (stronger visual reasoning, higher compute)
 
-## 1) What the model link you shared is (and is not)
-
-You shared: `https://huggingface.co/LiquidAI/LFM2.5-350M`
-
-From the model card, `LFM2.5-350M` is a general-purpose **text-only** instruct model intended for extraction, structured outputs, and tool use. It is not a multimodal checkpoint that takes image tensors.
-
-### What this means practically
-- If your input is a webcam frame, you need either:
-  1. A separate vision model (detector/captioner) before the text model, or
-  2. A native VLM model (`LFM2.5-VL-*`) that accepts image+text in chat format.
+So: keep `LFM2.5-350M` for text logic if you want, but for camera frames you should run `LFM2.5-VL-*`.
 
 ---
 
-## 2) Which Liquid model to use for camera-based behavior
+## What to run for your use case
+Your goals:
+1. Detect person enters room
+2. Stay in “investigation/security” behavior
+3. Speak in character ("hey what you doing here")
+4. Optional playful roast + merch upsell mode
 
-For your use case ("if person enters frame, react and speak") use `LiquidAI/LFM2.5-VL-450M` first:
+### Recommended model choice
+Start with **`LFM2.5-VL-450M`** for real-time edge speed.
 
-### Why `LFM2.5-VL-450M`
-- Built on LFM2.5-350M backbone + vision encoder.
-- Supports image+text prompting with Hugging Face `AutoModelForImageTextToText`.
-- Designed for low-latency and edge scenarios.
-- Adds bounding box / grounding support and function-calling support (text-side), helpful for event pipelines.
+Why:
+- It is the LFM2.5 vision-language variant (image+text input).
+- Built on LFM2.5-350M backbone with a vision encoder.
+- Designed for low-latency use and local deployment options (native / GGUF / ONNX).
 
-### When to choose `LFM2.5-VL-1.6B` instead
-- If you need stronger scene understanding and can handle more latency and memory.
-- If you do more than security banter (e.g., detailed analytics, OCR-heavy tasks).
+Use **`LFM2.5-VL-1.6B`** only if you need better OCR/multi-image detail and can tolerate extra latency.
 
 ---
 
-## 3) Recommended system architecture
+## Architecture that works in production
 
 ```text
-Webcam stream
-  -> Frame sampler (e.g., 1-2 FPS for reasoning)
-  -> Person detector/tracker (YOLO/RT-DETR/OpenCV DNN)
-  -> Event engine (entered frame, lingered, exited)
-  -> LFM2.5-VL prompt builder (mode-specific persona)
-  -> Response policy filter (safety, profanity, protected classes)
-  -> TTS output + subtitle overlay
-  -> Alert sink (webhook/SMS/home-automation only in security mode)
+Camera stream (15-30 FPS)
+  -> lightweight person detector/tracker (8-15 FPS)
+  -> event engine (entered, lingered, exited, restricted-zone)
+  -> frame sampler for VLM (1-2 FPS only when needed)
+  -> LFM2.5-VL prompt by mode
+  -> safety/policy filter
+  -> TTS output + optional webhook alert
 ```
 
 ### Why split detector + VLM
-- Detector/tracker is cheap and stable for "person entered" events.
-- VLM is used only when needed for richer text.
-- This lowers token cost and improves real-time responsiveness.
+- Detector handles real-time motion/person events cheaply.
+- VLM is called only when you need language (“what should I say now?”).
+- This gives much better latency and less repeated speech spam.
 
 ---
 
-## 4) Mode design (state machine)
+## State machine (important)
 
-Create explicit modes with clear transition logic.
+### Modes
+- **IDLE**: no person
+- **INVESTIGATE**: person entered; gather context
+- **SECURITY**: unknown person / odd hours / restricted zone
+- **ROAST_MERCH**: playful line + merch suggestion (opt-in only)
 
-## Modes
-1. **Idle**: no person detected.
-2. **Investigate**: person detected for N frames; describe scene and intent estimate.
-3. **Security**: unknown person or suspicious event; warn + optionally notify.
-4. **Hype/Roast Merch Mode**: playful commentary and upsell style lines.
+### Suggested transitions
+- `IDLE -> INVESTIGATE`: person seen for >= 1.0s
+- `INVESTIGATE -> SECURITY`: unknown_face=true OR zone=restricted OR linger>20s at night
+- `INVESTIGATE -> ROAST_MERCH`: known/consenting user + non-security context
+- `* -> IDLE`: no person for >= 4s
 
-## Suggested transitions
-- `Idle -> Investigate`: person confidence > threshold for 1-2 seconds.
-- `Investigate -> Security`: unknown face, odd hours, restricted zone, or loitering > X seconds.
-- `Investigate -> Roast`: recognized friend/visitor + confidence high + allowed profile flag.
-- Any mode -> `Idle`: no person for Y seconds.
-
-Keep a **cooldown** (e.g., 8-12 sec) to prevent repetitive speech spam.
+### Cooldown
+Use 8–12 second speech cooldown so it doesn’t repeat every frame.
 
 ---
 
-## 5) Prompt templates you can use
+## Prompt packs you can drop in now
 
-Use one system prompt per mode, then inject live scene facts from detector + VLM frame summary.
-
-## Security mode system prompt
+## 1) SECURITY mode system prompt
 ```text
-You are a home security assistant speaking over a smart speaker.
-Style: short, direct, assertive. 1 sentence max unless asked.
-If a person is visible, challenge politely: "Hey, what are you doing here?"
-Never mention protected traits. Avoid threats. Do not escalate beyond warning + notify owner.
+You are a security voice assistant on a home camera.
+Style: short, direct, confident. Max 1 sentence.
+If person is visible and unknown, challenge politely.
+Do not mention protected traits, do not threaten, do not insult.
 If uncertain, say you are uncertain.
 ```
 
-## Roast/merch mode system prompt (safer version)
+### SECURITY user payload template
 ```text
-You are a playful fashion roast MC for consenting users.
-Tone: funny, light, PG-13, no hate speech, no slurs, no harassment.
-Roast only clothing/style choices in a cartoonish way.
-End every line with a positive merch suggestion (hat/hoodie) and one compliment.
-Max 2 short sentences.
+Mode=SECURITY
+Facts:
+- person_count={person_count}
+- known_face={known_face}
+- zone={zone}
+- local_time={local_time}
+Generate one spoken line now.
 ```
 
-## User content payload template
-```json
-{
-  "role": "user",
-  "content": [
-    {"type": "image", "image": "<current_frame>"},
-    {"type": "text", "text": "Mode=SECURITY. Facts: person_count=1, zone=living_room, time=23:48, known_face=false. Generate one spoken line."}
-  ]
-}
+### SECURITY sample lines
+- “Hey, I don’t recognize you. What are you doing here?”
+- “You’re in a monitored area. Please identify yourself.”
+- “Heads up: I’m notifying the owner to check this room.”
+
+## 2) INVESTIGATE mode system prompt
+```text
+You are an investigation assistant.
+Goal: ask a calm clarifying question.
+Keep it friendly and short. Max 1 sentence.
 ```
+
+### INVESTIGATE sample lines
+- “Hey there, can I help you find someone?”
+- “Quick check—are you expected in this room right now?”
+
+## 3) ROAST_MERCH mode system prompt (safer)
+```text
+You are a playful fashion commentator for consenting users.
+Tone: light, funny, PG-13. Max 2 short sentences.
+Roast only outfit style in a cartoonish way.
+Never target protected traits, body shape, or sensitive attributes.
+Always end with one positive compliment and one merch suggestion.
+```
+
+### ROAST_MERCH sample lines
+- “That outfit looks like it lost a bet—but your confidence is elite. Wanna upgrade with the midnight cap?”
+- “You dressed like Monday morning chaos, and somehow it works. Respect. Grab the signature hat and complete the look.”
 
 ---
 
-## 6) Minimal Python inference example (Hugging Face)
+## Minimal Hugging Face inference example (Python)
 
 ```python
 import torch
@@ -123,24 +133,24 @@ model_id = "LiquidAI/LFM2.5-VL-450M"
 
 model = AutoModelForImageTextToText.from_pretrained(
     model_id,
-    torch_dtype=torch.bfloat16,
+    dtype=torch.bfloat16,
     device_map="auto",
 )
 processor = AutoProcessor.from_pretrained(model_id)
 
-image = Image.open("frame.jpg").convert("RGB")
-conversation = [
+frame = Image.open("frame.jpg").convert("RGB")
+messages = [
     {
         "role": "user",
         "content": [
-            {"type": "image", "image": image},
-            {"type": "text", "text": "Mode=SECURITY. person_count=1. unknown_face=true. Generate one short warning line."}
+            {"type": "image", "image": frame},
+            {"type": "text", "text": "Mode=SECURITY. known_face=false. Generate one spoken line."},
         ],
     }
 ]
 
 inputs = processor.apply_chat_template(
-    conversation,
+    messages,
     add_generation_prompt=True,
     return_tensors="pt",
     return_dict=True,
@@ -148,80 +158,73 @@ inputs = processor.apply_chat_template(
 ).to(model.device)
 
 with torch.no_grad():
-    output = model.generate(**inputs, max_new_tokens=48, temperature=0.6)
+    out = model.generate(**inputs, max_new_tokens=48, temperature=0.6)
 
-text = processor.batch_decode(output, skip_special_tokens=True)[0]
-print(text)
+reply = processor.batch_decode(out, skip_special_tokens=True)[0]
+print(reply)
 ```
 
 ---
 
-## 7) Real-time pipeline pseudocode
+## Real-time controller pseudocode
 
 ```python
 while True:
-    frame = camera.read()
-    detections = person_detector(frame)
+    frame = cam.read()
+    dets = detector.track(frame)
 
-    event = state_machine.update(detections, now=time.time())
+    event = state_machine.update(dets, now=time.time())
 
     if event.should_speak and cooldown.ready():
         mode = event.mode
-        scene_facts = build_scene_facts(detections, metadata)
+        prompt = build_prompt(mode, event.facts)
+        line = vlm_generate(frame, prompt)
+        line = policy_filter(line, mode)
+        tts.speak(line)
 
-        vlm_text = generate_line_with_lfm2_vl(frame, mode, scene_facts)
-        safe_text = safety_filter(vlm_text, mode)
-
-        tts.speak(safe_text)
-
-    if event.should_alert_owner:
-        notify_owner(event.snapshot, event.summary)
+    if event.should_alert:
+        send_alert(snapshot=frame, summary=event.summary)
 ```
 
 ---
 
-## 8) Guardrails you definitely want
+## Safety + legal guardrails (US practical)
 
-Because you asked for roast behavior, use strict policy checks before speaking:
-
-- Block content referencing protected attributes (race, religion, disability, etc.).
-- Block sexual or threatening content.
-- Block doxxing/private details.
-- Keep tone playful and opt-in only (people in household must consent).
-- Add a hard "safe mode" switch phrase: **"Security, be respectful"**.
-- Log outputs for review and tuning.
-
-Recommended implementation:
-1. Generate candidate line.
-2. Run moderation rules/classifier.
-3. If blocked, replace with safe fallback ("Welcome in—check out the hat drop!").
+1. **Consent for roast mode**: make this opt-in per known user.
+2. **Default unknown users to SECURITY tone**, not insults.
+3. **No protected-class targeting** (race, religion, disability, etc.).
+4. **Two-party consent states** can restrict audio recording; check local law before storing voice.
+5. Add a global safe phrase (example): **“Security, respectful mode.”**
+6. Store logs for review; keep retention short.
 
 ---
 
-## 9) Practical defaults for your first build
-
-- Frame sampling: 1 FPS for VLM, 8-15 FPS for lightweight detector.
-- Trigger threshold: person detected continuously for 1.2s.
-- Speech cooldown: 10s.
-- Max utterance length: 18 words.
-- Security mode confidence threshold stricter than roast mode.
-- Keep a per-person memory key for 30-60s to avoid repeating same line.
-
----
-
-## 10) Suggested launch plan
-
-1. Start with **Security mode only** (neutral voice).
-2. Add alert webhook (phone/home assistant) and event logs.
-3. Add Roast mode behind explicit toggle and consent list.
-4. A/B test prompt variants for shortness + fun factor.
-5. Add merch tool-call (e.g., returns product URL) only after behavior is stable.
+## Tuning defaults for first stable version
+- Person detector: 10 FPS
+- VLM call rate: 1 FPS (event-triggered)
+- Enter threshold: 1.0s continuous detection
+- Linger threshold: 20s
+- Speech cooldown: 10s
+- Max words spoken: 18
+- Fallback line when policy blocks output:
+  - “Welcome in. If you need help, say hello.”
 
 ---
 
-## 11) Source links
+## “Tell surf” style line pack (your vibe)
+If you want that playful “I’m going to tell…” behavior:
 
-- LFM2.5-350M model card: https://huggingface.co/LiquidAI/LFM2.5-350M
-- LFM2.5-VL-450M model card: https://huggingface.co/LiquidAI/LFM2.5-VL-450M
-- Transformers LFM2-VL docs: https://huggingface.co/docs/transformers/en/model_doc/lfm2_vl
+- “Heyy, what you doing here? I’m about to report this to the boss cam.”
+- “I see you in frame—don’t act innocent, I’m logging this entrance.”
+- “Friendly warning: this room has receipts, and I keep all of them.”
 
+Use these in **SECURITY** or **INVESTIGATE** with moderation filters.
+
+---
+
+## Sources
+- LFM2.5-350M model card (text-only description): https://huggingface.co/LiquidAI/LFM2.5-350M
+- LFM2.5-VL-450M model card (vision-language details): https://huggingface.co/LiquidAI/LFM2.5-VL-450M
+- LFM2.5-VL-1.6B model card (larger VL variant): https://huggingface.co/LiquidAI/LFM2.5-VL-1.6B
+- Liquid docs (LFM2.5-VL-450M page): https://docs.liquid.ai/lfm/models/lfm25-vl-450m
+- Hugging Face Transformers LFM2-VL docs (API/classes/examples): https://huggingface.co/docs/transformers/en/model_doc/lfm2_vl

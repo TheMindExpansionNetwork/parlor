@@ -69,6 +69,20 @@ Then open [http://localhost:8000](http://localhost:8000), allow mic/camera, and 
 
 ---
 
+
+## System latency test
+
+Run a repeatable end-to-end latency gate against the live WebSocket server:
+
+```bash
+cd src
+uv run python server.py
+# in a second terminal
+uv run python benchmarks/latency_system_test.py --runs 5 --warmup 1
+```
+
+By default the test fails if p95 latency exceeds configured thresholds. Tune limits with `--max-text-p95` and `--max-total-p95`.
+
 ## What this fork adds
 
 - **MindBotz rebrand**

@@ -67,6 +67,8 @@ uv run server.py
 
 Then open [http://localhost:8000](http://localhost:8000), allow mic/camera, and start talking.
 
+On Windows, you can use `scripts/start_windows.bat` to run `uv sync` and start the server from the repo root.
+
 ---
 
 
@@ -91,6 +93,11 @@ By default the test fails if p95 latency exceeds configured thresholds. Tune lim
 - **Fast mode optimization**: smaller camera frames + lower JPEG quality for lower latency
 
 Models auto-download on first run (~2.6 GB for Gemma 4 E2B + TTS files).
+
+## Extra project docs
+
+- `docs/brainstorm-and-launch-plan.md` keeps roadmap and launch planning notes out of the main README.
+- `scripts/start_windows.bat` gives you a simple Windows bootstrap command for local testing.
 
 ---
 

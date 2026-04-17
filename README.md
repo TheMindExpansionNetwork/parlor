@@ -199,6 +199,42 @@ Before release:
 - [ ] Known issues section
 - [ ] Demo clip or screenshot for users
 
+### 6) Session recovery + merge-to-main checklist
+
+If work happened across multiple Codex sessions, run this sequence before you call it done:
+
+```bash
+# 1) inspect all local branches
+git branch
+
+# 2) compare branch tips against main
+git log --oneline --decorate --graph --all --max-count=30
+
+# 3) switch to main and sync (if origin exists)
+git checkout main
+git pull origin main || true
+
+# 4) merge each completed work branch
+git merge <branch-name>
+
+# 5) push updated main
+git push origin main
+```
+
+Fast sanity check after merge:
+
+```bash
+git status
+git branch --merged
+```
+
+If `main` does not exist yet in your local clone, create it from your current stable branch once:
+
+```bash
+git checkout -b main
+git push -u origin main
+```
+
 ---
 
 ## Fork + Branch Organization (Game Plan)

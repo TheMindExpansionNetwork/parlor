@@ -104,7 +104,7 @@ Models auto-download on first run (~2.6 GB for Gemma 4 E2B + TTS files).
 
 ## Product planning and brainstorm docs
 
-All roadmap ideas, launch planning, and brainstorm notes now live in:
+All roadmap ideas, launch planning, branch workflow notes, and merge-conflict recovery steps now live in:
 
 - [`docs/brainstorm-and-launch-plan.md`](docs/brainstorm-and-launch-plan.md)
 

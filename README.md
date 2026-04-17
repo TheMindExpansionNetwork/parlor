@@ -69,6 +69,30 @@ Then open [http://localhost:8000](http://localhost:8000), allow mic/camera, and 
 
 ---
 
+
+## Quick start (Windows)
+
+### One-time setup
+
+1. Install Python 3.12+.
+2. Install `uv`:
+   ```powershell
+   powershell -ExecutionPolicy ByPass -c "irm https://astral.sh/uv/install.ps1 | iex"
+   ```
+3. Clone this repo.
+
+### Run with one command
+
+From the project root, double-click `scripts\start_windows.bat` (or run it in `cmd`).
+
+The script will:
+- `cd` into `src`
+- run `uv sync`
+- launch the app with `uv run server.py`
+
+---
+
+
 ## What this fork adds
 
 - **MindBotz rebrand**
@@ -81,6 +105,9 @@ Models auto-download on first run (~2.6 GB for Gemma 4 E2B + TTS files).
 ---
 
 ## MindBot Operator Manual (Codex + iPhone Workflow)
+
+> Planning + brainstorm notes are also tracked in `docs/brainstorm-and-launch-plan.md` for easier merge/review workflows.
+
 
 If you want to comfortably build/fork/ship without chaos, use this.
 

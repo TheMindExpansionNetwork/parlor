@@ -118,6 +118,7 @@ async def main():
     audio_2s = make_wav_b64(2.0)
     audio_5s = make_wav_b64(5.0)
     image = make_jpg_b64()
+    raw_delimiter = '<|"|>'
 
     # ── Individual turns (new connection each = fresh conversation) ─────
 
@@ -173,7 +174,7 @@ async def main():
         r = await send_and_receive(ws, {"text": "Hello, nice to meet you!"})
         print(f"  Tool called:        {'PASS' if r['transcription'] else 'FAIL'}")
         print(f"  Has response:       {'PASS' if r['text'] and len(r['text']) > 0 else 'FAIL'}")
-        print(f"  No raw delimiters:  {'PASS' if '<|\"|>' not in r['text'] else 'FAIL'}")
+        print(f"  No raw delimiters:  {'PASS' if raw_delimiter not in r['text'] else 'FAIL'}")
 
         # Image description works
         r = await send_and_receive(ws, {"image": image})
